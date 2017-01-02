@@ -1,0 +1,123 @@
+// print "In INT 4";
+alias physicalSP S0;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias sysCallNo S1;
+sysCallNo = [physicalSP - 1];
+breakpoint;
+// print "sysCallNo=";
+// print sysCallNo;
+
+if (sysCallNo == 5) then
+	// Implementation of Write
+	
+	// Get the File Descriptor
+	alias fileDescriptor S2;
+	fileDescriptor = [physicalSP - 4];
+//	//*print "fileDescriptor=";
+//	//*print fileDescriptor;
+	
+	// Check if the File Descriptor is Valid
+	if(fileDescriptor<0 || fileDescriptor>7) then
+	//	//*print "Invalid FD";
+		[physicalSP - 2] = -1;
+		// print "Out INT 4";
+		ireturn;
+	endif;
+	
+	// Get the current PID
+	alias currentPID S3;
+	currentPID = (PTBR - 1024) / 8;
+	
+	// Get the Start of Per Process Table
+	alias PPFTStart S4;
+	PPFTStart = READY_LIST + 32 * currentPID + 15;
+	
+	// Check if the Entry there is Valid
+	if([PPFTStart+2*fileDescriptor] == -1) then
+	//	//*print "Invalid SWOT";
+		[physicalSP - 2] = -1;
+		// print "Out INT 4";
+		ireturn;
+	endif;
+	
+	// Get the SWOTindex 
+	alias SWOTindex S5;
+	SWOTindex = [PPFTStart+2*fileDescriptor];
+	
+//	//*print "SWOTindex=";
+//	//*print SWOTindex;
+	
+	// Get the LSEEK 
+	alias lSeek S6;
+	lSeek = [PPFTStart+2*fileDescriptor+1];
+	
+	// Get the Fat Index 
+	alias fatIndex S7;
+	fatIndex = [FILE_TABLE + 2 * SWOTindex];
+	
+//	//*print "fatIndex=";
+//	//*print fatIndex;
+	
+	alias basicBlock S8;
+	basicBlock = [FAT + 8 * fatIndex + 2];
+	
+//	//*print "BasicBlock=";
+//	//*print basicBlock;
+	
+	load(1, basicBlock);
+	
+	alias dataBlock S9;
+	dataBlock = [512 + lSeek/512];
+	
+	
+	if(dataBlock == -1) then
+		// Why did this Happen??
+		// Allocate New Block
+		
+		//Find a Free Block
+		dataBlock = 24;
+		while (dataBlock < 447) do
+			if ([dataBlock + DISK_LIST] == 0) then	
+			//	//*print "FreeSpace";
+			//	//*print dataBlock;
+				break;
+			endif;
+			dataBlock = dataBlock + 1;
+		endwhile;
+	
+		if (dataBlock == 447) then	
+			[physicalSP - 2] = -1;
+		//	//*print "No FreeSpace";
+			// print "Out INT 4";
+			ireturn;
+		endif;
+		
+		// Set it as not Free
+		[dataBlock + DISK_LIST] = 1;
+		
+		[512 + lSeek/512] = dataBlock;
+		
+		store(1, basicBlock);
+		[FAT + 8 * fatIndex + 1] = [FAT + 8 * fatIndex + 1] + 512;
+		
+		store(5, 19);
+		store(6, 20);
+	endif;
+	
+	load(1, dataBlock);
+	
+	[512 + lSeek%512] = [physicalSP - 3];
+	
+	store(1, dataBlock);
+	
+	[PPFTStart+2*fileDescriptor+1] = lSeek + 1;
+	
+	[physicalSP - 2] = 0;
+	// print "Out INT 4";
+	ireturn;
+	
+endif;
+[physicalSP - 2] = -1;
+//*print "InvalidSYSCall";
+// print "Out INT 4";
+ireturn;

@@ -1,0 +1,157 @@
+// print "In INT 2";
+alias physicalSP S0;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias sysCallNo S1;
+sysCallNo = [physicalSP - 1];
+breakpoint;
+// print "sysCallNo=";
+// print sysCallNo;
+if (sysCallNo == 2) then
+	// Implementation of Open
+	alias filename S2;
+	filename = [physicalSP - 3];
+//	//*print "filename=";
+//	//*print filename;
+	
+	//Search the FAT for the existence of File
+	alias fatIndex S3;
+	fatIndex = 0;					
+	while (fatIndex < 64) do
+		if ([fatIndex*8 + FAT] == filename) then	
+			break;
+		endif;
+		fatIndex = fatIndex + 1;
+	endwhile;
+	
+	if(fatIndex == 64) then
+	//	//*print "FilenotExist";
+		[physicalSP - 2] = -1;
+		// print "Out INT 2";
+		ireturn;
+	endif;
+	
+	//Search the System Wide Open Table for file Entry
+	alias SWOTindex S4;
+	SWOTindex = 0;
+	while ( SWOTindex <  64) do
+		if ([FILE_TABLE + 2*SWOTindex] == fatIndex) then
+			break;
+		endif;
+		if ([FILE_TABLE + 2*SWOTindex] == -1) then
+			break;
+		endif;
+		SWOTindex = SWOTindex + 1;			// Move to next entry
+	endwhile;
+	
+	if (SWOTindex == 64) then
+	//	//*print "SWOT Full";
+		[physicalSP - 2] = -1;
+		// print "Out INT 2";
+		ireturn;
+	endif;
+	
+//	//*print "SWOTI:";
+//	//*print SWOTindex;
+	
+	alias currentPID S5;
+	currentPID = (PTBR - 1024) / 8;
+	
+	alias PPFTStart S6;
+	PPFTStart = READY_LIST + 32 * currentPID + 15;
+	
+	alias PPFTIndex S7;
+	PPFTIndex = 0;
+	
+	while(PPFTIndex<8) do
+		if([PPFTStart+2*PPFTIndex] == SWOTindex) then
+			break;
+		endif;
+		if([PPFTStart+2*PPFTIndex] == -1) then
+			[PPFTStart+2*PPFTIndex] = SWOTindex;
+			[PPFTStart+2*PPFTIndex + 1] = 0;
+			break;
+		endif;
+		PPFTIndex = PPFTIndex + 1;
+	endwhile;
+	
+	if (PPFTIndex == 8) then
+	//	//*print "PPFT Full";
+		[physicalSP - 2] = -1;
+		// print "Out INT 2";
+		ireturn;
+	endif;
+	
+//	//*print "PPFTIn";
+//	//*print PPFTIndex;
+	
+	if([FILE_TABLE + 2*SWOTindex] == -1) then
+		[FILE_TABLE + 2*SWOTindex + 1] = 0;
+	endif;
+	
+	[FILE_TABLE + 2*SWOTindex] = fatIndex;
+	[FILE_TABLE + 2*SWOTindex + 1] = [FILE_TABLE + 2*SWOTindex + 1] + 1;
+	
+	[physicalSP - 2] = PPFTIndex;
+	// print "Out INT 2";
+	ireturn;
+endif;
+
+
+if (sysCallNo == 3) then
+	// Implementation of Close
+	
+	// Get the File Descriptor
+	alias fileDescriptor S2;
+	fileDescriptor = [physicalSP - 3];
+//	//*print "fileDescriptor=";
+//	//*print fileDescriptor;
+	
+	// Check if the File Descriptor is Valid
+	if(fileDescriptor<0 || fileDescriptor>7) then
+	//	//*print "Invalid FD";
+		[physicalSP - 2] = -1;
+		// print "Out INT 2";
+		ireturn;
+	endif;
+	
+	// Get the current PID
+	alias currentPID S3;
+	currentPID = (PTBR - 1024) / 8;
+	
+	// Get the Start of Per Process Table
+	alias PPFTStart S4;
+	PPFTStart = READY_LIST + 32 * currentPID + 15;
+	
+	// Check if the Entry there is Valid
+	if([PPFTStart+2*fileDescriptor] == -1) then
+	//	//*print "Invalid SWOT";
+		[physicalSP - 2] = -1;
+		// print "Out INT 2";
+		ireturn;
+	endif;
+	
+	// Get the SWOTindex 
+	alias SWOTindex S5;
+	SWOTindex = [PPFTStart+2*fileDescriptor];
+	
+	// Decrement File Open Count
+	[FILE_TABLE + 2*SWOTindex + 1] = [FILE_TABLE + 2*SWOTindex + 1] - 1;
+	
+	// Check if it Zero
+	if([FILE_TABLE + 2*SWOTindex + 1]==0) then
+		[FILE_TABLE + 2*SWOTindex] = -1;
+	endif;
+	
+	// Remove the Entry from PPFT
+	[PPFTStart+2*fileDescriptor] = -1;
+	[PPFTStart+2*fileDescriptor + 1] = -1;
+	
+	[physicalSP - 2] = 0;
+	// print "Out INT 2";
+	ireturn;
+	
+endif;
+[physicalSP - 2] = -1;
+//*print "InvalidSYSCall";
+// print "Out INT 2";
+ireturn;

@@ -1,0 +1,83 @@
+// print "timer Running";
+// Structure of PCB
+//	0	|	1	|	2	|	3	|	4	|	5	|	6	|	7-14	|	15-30	|
+//------+-------+-------+-------+-------+-------+-------+-----------+-----------+
+// PID	| STATE	|	BP	|	SP	|	IP	| PTBR	| PTLR	|  R0 - R7	| File Tbl.	|
+//------+-------+-------+-------+-------+-------+-------+-----------+-----------+
+
+// Variables
+alias currentPID S0;
+alias currentPCB S1;
+alias physicalSP S2;
+alias newPID S4;
+alias newPCB S3;
+alias newphysicalSP S5;
+
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+
+// Save the Current Process Context
+	currentPID = (PTBR - 1024) / 8;
+	currentPCB = READY_LIST + 32 * currentPID;
+	[ currentPCB + 1 ] = 1; 				// Set STATE to READY
+	[ currentPCB + 2 ] = BP;				// Save BP
+	[ currentPCB + 3 ] = SP - 1; 			// Save SP. -1 coz interrupt pushed the IP in Stack
+	[ currentPCB + 4 ] = [ physicalSP ]; 	// Save IP of current process in the PCB from the stack
+	[ currentPCB + 5 ] = PTBR;				// Save PTBR
+	[ currentPCB + 6 ] = PTLR;				// Save PTLR
+	[ currentPCB + 7 ] = R0;				//
+	[ currentPCB + 8 ] = R1;				//
+	[ currentPCB + 9 ] = R2;				//	Save the Registers
+	[ currentPCB + 10 ] = R3;				//
+	[ currentPCB + 11 ] = R4;				//
+	[ currentPCB + 12 ] = R5;				//
+	[ currentPCB + 13 ] = R6;				//
+	[ currentPCB + 14 ] = R7;				//
+	
+	
+	
+//Find the New Process to Take
+	newPID = currentPID;
+	while (1) do
+		// print "Checking ";	
+		newPID = (newPID+1)%32;
+		// print newPID;
+		if ([READY_LIST + 32 * newPID +1]==1) then
+			break;
+		endif;
+	endwhile;
+	// print "RobbinOver";
+	if (currentPID==newPID) then
+		ireturn;
+	endif;
+// Resume the New Process Found	
+	// print "newPID";
+	// print newPID;
+
+	
+	newPCB = READY_LIST + 32 * newPID;
+	[ newPCB + 1 ] = 2; 					// Set STATE to READY
+	BP = [ newPCB + 2 ];					//
+	SP = [ newPCB + 3 ]; 					//
+	PTBR = [ newPCB + 5 ];					//
+	PTLR = [ newPCB + 6 ];					//
+	R0 = [ newPCB + 7 ];					//
+	R1 = [ newPCB + 8 ];					// Copy Back the values
+	R2 = [ newPCB + 9 ];					//
+	R3 = [ newPCB + 10 ]; 					//
+	R4 = [ newPCB + 11 ]; 					//
+	R5 = [ newPCB + 12 ]; 					//
+	R6 = [ newPCB + 13 ]; 					//
+	R7 = [ newPCB + 14 ];					//
+	SP = SP + 1; 							// Make space for storing the IP on top as after interrupt
+											// it is loaded from there
+	
+	newphysicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512); 
+	[ newphysicalSP ] = [ newPCB + 4 ]; 
+	// Stores IP field value of PCB on the stack
+	
+	// print "Switched";
+	// print currentPID;
+	// print newPID;
+	breakpoint;
+// print "UserTurn"; 
+ireturn;

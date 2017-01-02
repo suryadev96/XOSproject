@@ -1,0 +1,512 @@
+print "OS
+Started";
+load(7,1);
+
+load(8,2);
+
+load(23,17);
+
+load(24,18);
+
+[READY_LIST +
+0] = 0; // Sets load(25,21); //
+load(25,21); //
+Load 1st page o
+load(26,22); //
+Load 2nd page o
+load(27,23); //
+Load 3rd page o
+PTBR =
+1024; 
+PTLR =
+4; 
+[PTBR +
+0] = 25; // Phys[PTBR +
+[PTBR +
+1] = "01"; // Au[PTBR +
+[PTBR +
+2] = 26; // Phys[PTBR +
+[PTBR +
+3] = "01"; // Au[PTBR +
+[PTBR +
+4] = 27; // Phys[PTBR +
+[PTBR +
+5] = "01"; // Au[PTBR +
+[PTBR +
+6] = 28; // Phys[PTBR +
+[PTBR +
+7] = "01"; // Au[READY_LIST +
+[READY_LIST +
+1] = 2; // Sets SP =
+SP =
+3 * 512; 
+[28 *
+512] = 0; // Setload(11,5);
+load(11,5);
+
+load(12,6);
+
+load (9,
+3);
+load (10,
+4);
+[READY_LIST +
+32] = 1;
+load(29,27);
+
+alias PTBR_ProceS0;
+S0;
+PTBR_Process1 =
+1024 + 1 * 8; 
+[PTBR_Process1 +0] = 29; // Ph
+0] = 29; // Ph
+[PTBR_Process1 +1] = "01"; // Né[PTBR_Process1 +2] = -1; // In
+1] = "01"; // Né[PTBR_Process1 +2] = -1; // In
+[PTBR_Process1 +2] = -1; // In
+2] = -1; // In
+[PTBR_Process1 +3] = "00"; // Né[PTBR_Process1 +4] = -1; // In
+3] = "00"; // Né[PTBR_Process1 +4] = -1; // In
+[PTBR_Process1 +4] = -1; // In
+4] = -1; // In
+[PTBR_Process1 +5] = "00"; // Né[PTBR_Process1 +6] = 30; // Ph
+5] = "00"; // Né[PTBR_Process1 +6] = 30; // Ph
+[PTBR_Process1 +6] = 30; // Ph
+6] = 30; // Ph
+[PTBR_Process1 +7] = "01"; // Né[READY_LIST +
+7] = "01"; // Né[READY_LIST +
+[READY_LIST +
+33] = 1; // STAT[READY_LIST +
+[READY_LIST +
+37] = PTBR_Proce[READY_LIST +
+[READY_LIST +
+38] = 4; // PTLR[READY_LIST +
+[READY_LIST +
+34] = 3 * 512; /[READY_LIST +
+[READY_LIST +
+35] = 3 * 512; /[READY_LIST +
+[READY_LIST +
+36] = 0; // Sets[READY_LIST +
+[READY_LIST +
+64] = 2;
+load(33,29);
+
+alias PTBR_ProceS0;
+S0;
+PTBR_Process2 =
+1024 + 2 * 8; 
+[PTBR_Process2 +0] = 33; // Ph
+0] = 33; // Ph
+[PTBR_Process2 +1] = "01"; // Né[PTBR_Process2 +2] = -1; // In
+1] = "01"; // Né[PTBR_Process2 +2] = -1; // In
+[PTBR_Process2 +2] = -1; // In
+2] = -1; // In
+[PTBR_Process2 +3] = "00"; // Né[PTBR_Process2 +4] = -1; // In
+3] = "00"; // Né[PTBR_Process2 +4] = -1; // In
+[PTBR_Process2 +4] = -1; // In
+4] = -1; // In
+[PTBR_Process2 +5] = "00"; // Né[PTBR_Process2 +6] = 34; // Ph
+5] = "00"; // Né[PTBR_Process2 +6] = 34; // Ph
+[PTBR_Process2 +6] = 34; // Ph
+6] = 34; // Ph
+[PTBR_Process2 +7] = "01"; // Né[READY_LIST +
+7] = "01"; // Né[READY_LIST +
+[READY_LIST +
+65] = 1; // STAT[READY_LIST +
+[READY_LIST +
+37+32] = PTBR_Pr[READY_LIST +
+[READY_LIST +
+38+32] = 4; // P[READY_LIST +
+[READY_LIST +
+34+32] = 3 * 512[READY_LIST +
+[READY_LIST +
+35+32] = 3 * 512[READY_LIST +
+[READY_LIST +
+36+32] = 0; // Sprint "OS-Over";
+print "OS-Over";
+
+breakpoint;
+
+ireturn;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

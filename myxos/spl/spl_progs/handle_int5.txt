@@ -1,0 +1,199 @@
+// print "In INT 5";
+alias parentPhySP S0;
+parentPhySP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias parentPID S1;
+parentPID = (PTBR - 1024) / 8;
+
+alias sysCallNo S2;
+sysCallNo = [parentPhySP - 1];
+breakpoint;
+alias i S3;
+alias j S4;
+// print "sysCallNo=";
+// print sysCallNo;
+if (sysCallNo == 8) then
+	// Implementation of Fork
+	// Find Free PCB for Child
+	
+	alias PCBSlot S5;
+	PCBSlot = 0;
+	while ( PCBSlot <  32) do					// 32 entries, each of size 32 words
+		if([ READY_LIST + 32*PCBSlot + 1] ==  0) then
+		// print "PCBSlot=";
+		// print PCBSlot;	
+			break;
+		endif;
+		PCBSlot = PCBSlot + 1;					// Move to next entry
+	endwhile;
+	
+	if(PCBSlot==32) then
+		// print "No PCBSlot";
+		[parentPhySP - 2] = -1;
+		// print("OUT INT 5");
+		ireturn;
+	endif;
+	
+	// Set the PID 
+	[READY_LIST + PCBSlot * 32 + 0] = PCBSlot; 
+	
+	alias parentPTBR S6;
+	parentPTBR = PAGE_TABLE + parentPID * 8;
+	alias childPTBR S7;
+	childPTBR = PAGE_TABLE + PCBSlot * 8;
+	
+
+	alias page S8;
+	i = 25;
+	page = 25;
+	
+	// print "PCBSlot";
+	// print PCBSlot;
+	while(page<64) do
+		if([ MEM_LIST + page]==0) then
+			// print "page";
+			// print page;
+			// print i;
+			break;
+		endif;
+	page = page + 1;
+	endwhile;
+	if(page==64) then
+		// print "No Free Page1";
+		alias procPTBR S9;
+		alias cond S10;
+		alias block S11;
+		cond = 1;
+		j = PCBSlot;
+		procPTBR = childPTBR;
+		while(cond) do
+			j = j + 1;
+			if(j==PCBSlot) then
+				halt;
+			endif;
+			if(j>=32) then
+				j = 0;
+			endif;
+			if([READY_LIST + 32*j]==0) then
+				continue;
+			endif;
+			procPTBR = PAGE_TABLE + 8*j;
+			i = procPTBR;
+			while(i<procPTBR+6) do
+				if([i+1]=="01") then
+					block = 448;
+					while(block<512) do
+						if([DISK_LIST+block]==0) then
+							page = [i];
+							// print "Swapping";
+							// print procPTBR;
+							// print page;
+							// print block;
+							store([i],block);
+							[DISK_LIST+block] = 1;
+							[i] = block;
+							[i + 1] = "00";
+							cond = 0;
+							break;
+						endif;
+						block = block + 1;
+					endwhile;
+					if(block==512) then
+						// print "SwapAreaFull";
+						[parentPhySP - 2] = -1;
+						ireturn;
+					endif;
+					break;
+				endif;
+				if([i+1]=="10"&&[MEM_LIST+[i]]==1) then
+					[i+1]="00";
+				endif;
+				if([i+1]=="11"&&[MEM_LIST+[i]]==1) then
+					[i+1]="01";
+					continue;
+				endif;
+				i = i + 2;
+			endwhile;
+		endwhile;
+	endif;
+	
+	// print "SelectedP";
+	// print page;
+	
+	[ MEM_LIST + page] = 1;
+	[childPTBR + 6] = page;
+	[childPTBR + 7] = "01";
+	i = 0;
+	while(i<512) do
+		[page*512 + i] = [[parentPTBR + 6]*512 + i];
+		i = i + 1;
+	endwhile;
+	
+	// print "Assigning";
+	i=0;
+	j=0;
+	while(i<3) do
+		[childPTBR + j] = [parentPTBR + j];
+		[childPTBR + j + 1] = [parentPTBR + j + 1];
+		if([childPTBR + j + 1]=="01" || [childPTBR + j + 1]=="11") then
+			[MEM_LIST + [childPTBR + j]] = [MEM_LIST + [childPTBR + j]] + 1;
+		endif;
+		if(([childPTBR + j + 1]=="00" || [childPTBR + j + 1]=="10")&&[childPTBR + j]>=448) then
+			[DISK_LIST + [childPTBR + j]] = [DISK_LIST + [childPTBR + j]] + 1;
+		endif;
+		j = j + 2;
+		i = i + 1;
+	endwhile;
+
+	store(6,20);
+
+	alias parentPCB S12;
+	parentPCB = READY_LIST + parentPID * 32;
+	alias childPCB S13;
+	childPCB = READY_LIST + PCBSlot * 32;
+	
+	[childPCB + 5] = childPTBR;
+	// print "childPTBR";
+	// print childPTBR;
+	[childPCB + 4] = [parentPhySP];
+	// print "Child IP";
+	// print [parentPhySP];
+	[ childPCB + 3] = SP - 1;
+	[ childPCB + 2 ] = BP;					// Save BP
+	[ childPCB + 6 ] = [ parentPCB + 6 ];	// Save PTLR
+	[ childPCB + 7 ] = R0;					//
+	[ childPCB + 8 ] = R1;					//
+	[ childPCB + 9 ] = R2;					//	Save the Registers
+	[ childPCB + 10 ] = R3;					//
+	[ childPCB + 11 ] = R4;					//
+	[ childPCB + 12 ] = R5;					//
+	[ childPCB + 13 ] = R6;					//
+	[ childPCB + 14 ] = R7;					//
+	[ childPCB + 31 ] = parentPID;			//
+	
+	i = 0;
+	
+	while(i<16) do
+		[childPCB + 15 +  i] = [parentPCB + 15 +  i];
+		[childPCB + 16 +  i] = [parentPCB + 16 +  i];
+		if([childPCB + 15 +  i]!=-1) then
+			[[childPCB + 15 +  i]*2+1]=[[childPCB + 15 +  i]*2+1]+1;
+		endif;
+		i = i + 2;
+	endwhile;
+
+	[childPCB + 1] = 1;
+	
+	[parentPhySP - 2] = PCBSlot;
+	alias childPhySP S14;
+	childPhySP = ([childPTBR + 2 * ((SP-1) / 512)] * 512) + ((SP-1) % 512);
+	[childPhySP - 1] = -2;
+	breakpoint;
+	// print("OUT INT 5");
+	// print parentPTBR;
+	// print childPTBR;
+	ireturn;
+endif;
+[parentPhySP - 2] = -1;
+// print "InvalidSYSCall";
+// print("OUT INT 5");
+ireturn;

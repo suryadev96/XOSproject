@@ -1,0 +1,196 @@
+// print "In INT 1";
+alias physicalSP S0;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias sysCallNo S1;
+sysCallNo = [physicalSP - 1];
+breakpoint;
+// print "sysCallNo=";
+// print sysCallNo;
+if (sysCallNo == 1) then
+	// Implementation of Create
+	alias filename S2;
+	filename = [physicalSP - 3];
+	// print "filename=";
+	// print filename;
+	
+	//Search the FAT for the existence of File
+	alias currentFile S3;
+	currentFile = FAT;					
+	while (currentFile < FAT + 512) do
+		if ([currentFile + 0] == filename) then	
+			[physicalSP - 2] = 0;
+			// print "File Exists";
+			// print "Out INT 1";
+			ireturn;
+		endif;
+		currentFile = currentFile + 8;
+	endwhile;
+	// print "File not Exist";
+	
+	//Search the Disk Free List for free Block 
+	alias freeBlock S4;
+	freeBlock = 24;
+	while (freeBlock < 447) do
+		if ([freeBlock + DISK_LIST] == 0) then	
+			// print "FreeSpace";
+			// print freeBlock;
+			break;
+		endif;
+		freeBlock = freeBlock + 1;
+	endwhile;
+	
+	if (freeBlock == 447) then	
+		[physicalSP - 2] = -1;
+		// print "No FreeSpace";
+		// print "Out INT 1";
+		ireturn;
+	endif;
+	
+	//Search for free FAT entry to store
+	alias freeFatLoc S5;
+	freeFatLoc = FAT;
+	while (freeFatLoc < FAT + 512) do
+		if ([freeFatLoc + 2] == -1) then	
+			// print "FatBlock Exists";
+			break;
+		endif;
+		freeFatLoc = freeFatLoc + 8;
+	endwhile;
+	if (freeFatLoc == FAT + 512) then	
+		[physicalSP - 2] = -1;
+		// print "No FAT Block";
+		// print "Out INT 1";
+		ireturn;
+	endif;
+	// print "free FAT Loc";
+	// print freeFatLoc - FAT;
+	[freeFatLoc + 0] = filename;
+	[freeFatLoc + 1] = 0;
+	[freeFatLoc + 2] = freeBlock;
+	
+	//Writing the -1 in the Basic Block
+	load(1, freeBlock);
+	alias i S6;
+	i = 512;
+	while(i < 768) do
+		[i] =  "";
+		[i] = -1;
+		i = i + 1;
+	endwhile;
+	breakpoint;
+	store(1, freeBlock);
+	[DISK_LIST + freeBlock] = 1;
+	[physicalSP - 2] = 0;
+	breakpoint;
+	store(5, 19);
+	store(6, 20);
+	// print "Out INT 1";
+	ireturn;
+endif;
+
+if (sysCallNo == 4) then
+	// Implementation of Delete
+	breakpoint;
+	alias filename S7;
+	filename = [physicalSP - 3];
+	// print "filename=";
+	// print filename;
+	
+	//Find the File in FAT
+	alias currentFile S8;
+	currentFile = 0;
+	while (currentFile < 512) do
+		// print [currentFile + FAT + 0];
+		if ([currentFile + FAT + 0] == filename) then	
+			break;
+		endif;
+		currentFile = currentFile + 8;
+	endwhile;
+	if (currentFile == 512) then
+		[physicalSP - 2] = -1;
+		// print "FileNotFound";
+		// print "Out INT 1";
+		ireturn;
+	endif;
+	// print "File Found";
+	
+	//Check if the File is being Used
+	alias counter S9;
+	counter = 0;
+	while ( counter <  128) do
+		if ([FILE_TABLE + counter] == currentFile) then
+			[physicalSP - 2] = -1;
+			// print "File in Use";
+			// print "Out INT 1";
+			ireturn;
+		endif;
+		counter = counter + 2;			// Move to next entry
+	endwhile;
+	
+	// Get the Basic Block
+	alias basicBlock S10;
+	basicBlock = [FAT + currentFile + 2];
+	if (basicBlock == -1) then 
+		[physicalSP - 2] = -1;
+		// print "bBlk Invalid";
+		// print "Out INT 1";
+		ireturn;
+	endif;
+	
+	// print "basicBlock=";
+	// print basicBlock;
+	
+	
+	// Delete the Data Blocks
+	alias dataIndex S11;
+	alias dataBlock S12;
+	dataIndex = 0;
+	load(1, basicBlock);
+	while(dataIndex < 256) do 
+		dataBlock = [512 + dataIndex];
+		if(dataBlock == -1) then
+			break;
+		endif;
+		// print "dataBlock=";
+		// print dataBlock;
+		load(1, dataBlock);
+		alias i S13;
+		i = 0;
+		while(i < 512) do
+			[512 + i] = "";
+			i = i + 1;
+		endwhile;
+		store(1, dataBlock);
+		[DISK_LIST + dataBlock] = 0;
+		dataIndex = dataIndex + 1;
+		load(1, basicBlock);
+	endwhile;
+	
+	// Delete the Basic Block
+	load(1, basicBlock);
+	alias i S14;
+	i = 0;
+	while(i < 512) do
+		[512 + i] = "";
+		i = i + 1;
+	endwhile;
+	store(1, basicBlock);
+	
+	[DISK_LIST + basicBlock] = 0;
+	
+	[currentFile + FAT + 0] = -1;
+	[currentFile + FAT + 2] = -1;
+	
+	breakpoint;
+	
+	store(5, 19);
+	store(6, 20);
+	[physicalSP - 2] = 0;
+	// print "Out INT 1";
+	ireturn;
+	
+endif;
+[physicalSP - 2] = -1;
+// print "InvalidSYSCall";
+// print "Out INT 1";
+ireturn;

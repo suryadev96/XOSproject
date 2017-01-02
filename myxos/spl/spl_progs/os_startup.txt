@@ -1,0 +1,139 @@
+//print "OS Started";
+breakpoint;
+//Load Exception code into Memory
+load(7,1);load(8,2);
+
+//Load Timer Code into Memory
+load (9, 3);load (10, 4);
+
+//Load Interrupt 1 Code into Memory
+load(11,5);load(12,6);
+
+//Load Interrupt 2 Code into Memory
+load(13,7);load(14,8);
+
+//Load Interrupt 3 Code into Memory
+load(15,9);load(16,10);
+
+//Load Interrupt 4 Code into Memory
+load(17,11);load(18,12);
+
+//Load Interrupt 5 Code into Memory
+load(19,13);load(20,14);
+
+//Load Interrupt 6 Code into Memory
+load(21,15);load(22,16);
+
+//Load Interrupt 7 Code into Memory
+load(23,17);load(24,18);
+
+// Load the FAT
+load(5,19);
+
+// Load the Disk Free List
+load(6,20);
+
+// Initialize the Memory Free List
+alias counter S0;
+counter = 0;
+while ( counter <  25) do			// 
+	[ MEM_LIST + counter] = 1;		// Set 0-24 as Set
+	counter = counter + 1;			// 
+endwhile;	
+
+while ( counter <  64) do			// 
+	[ MEM_LIST + counter] = 0;		// Set 25-63 as Free
+	counter = counter + 1;			// 
+endwhile;	
+
+counter = 448;
+while (counter < 512) do
+	[DISK_LIST + counter] = 0;
+	counter = counter + 1;
+endwhile;
+
+breakpoint;
+
+// Initialize the System Wide Open File Table
+counter = 0;
+while ( counter <  128) do			// 64 entries, each of size 2 words
+	[ FILE_TABLE + counter + 0] = -1;	// Set FAT Index to -1
+	[ FILE_TABLE + counter + 1] =  0;	// Set File Open Count to 0
+	counter = counter + 2;			// Move to next entry
+endwhile;	
+
+breakpoint;
+
+// Initialize All PCB with State 0
+counter = 0;
+while ( counter <  32) do					// 64 entries, each of size 2 words
+	[ READY_LIST + 32*counter + 1] =  0;	// Set File Open Count to 0
+	counter = counter + 1;					// Move to next entry
+endwhile;	
+
+breakpoint;
+
+// Commit the Disk Free List back to Disk
+store(6,20);
+
+// Load The INIT Process into memory
+//	load(25,21);			// 
+//	load(26,22); 			// Load pages of code from disk to memory
+//	load(27,23); 			// 
+
+	PTBR = PAGE_TABLE; 			// Set the Address of Page Table
+	PTLR = 4; 				// Set the length of Page Table
+	SP = 3 * 512; 			// Set the start of the Stack
+	[28 * 512] = 0; 		// Set up the IP value for INIT as the top of stack 
+							// so when INIT process is started by system IP is set as 0
+
+	
+	//Assigning only Disk Block Numbers
+	[PTBR + 0] = 21; 		// 
+	[PTBR + 1] = "00"; 		// 
+	[PTBR + 2] = 22; 		// Setting bits as "00" 
+	[PTBR + 3] = "00"; 		// to mark as invalid for later
+	[PTBR + 4] = 23; 		// 
+	[PTBR + 5] = "00"; 		//
+	
+	//Allocating Memory for Stack
+	[PTBR + 6] = 25; 		// Setting the page for stack
+	[PTBR + 7] = "01"; 		// Auxiliary Information for Logical Page 3 (Stack)
+	[MEM_LIST + 25]=1;		//
+	
+	[READY_LIST + 0] = 0; 	// Sets the entry for PID as 0 
+	[READY_LIST + 1] = 2; 	// Sets the entry for STATE as Running 
+	[READY_LIST + 4 ] = 0; // Save IP of current process in the PCB from the stack
+	[READY_LIST + 5 ] = PTBR;		// Save PTBR
+	[READY_LIST + 6 ] = PTLR;		// Save PTLR
+	[READY_LIST + 7 ] = R0;		//
+	[READY_LIST + 8 ] = R1;		//
+	[READY_LIST + 9 ] = R2;		//	Save the Registers
+	[READY_LIST + 10 ] = R3;		//
+	[READY_LIST + 11 ] = R4;		//
+	[READY_LIST + 12 ] = R5;		//
+	[READY_LIST  + 13 ] = R6;		//
+	[READY_LIST  + 14 ] = R7;		//
+	
+	// Setting the Per Process File Table Entries as Invalid
+	[READY_LIST + 15 + 0] = -1;
+	[READY_LIST + 15 + 2] = -1;
+	[READY_LIST + 15 + 4] = -1;
+	[READY_LIST + 15 + 6] = -1;
+	[READY_LIST + 15 + 8] = -1;
+	[READY_LIST + 15 + 10] = -1;
+	[READY_LIST + 15 + 12] = -1;
+	[READY_LIST + 15 + 14] = -1;
+	
+	[READY_LIST + 31] = 0; 	// Sets the Parent PID as 0 
+// Loading INIT Process Complete
+
+// Structure of PCB
+//	0	|	1	|	2	|	3	|	4	|	5	|	6	|	7-14	|	15-30	| 31|
+//------+-------+-------+-------+-------+-------+-------+-----------+-----------+---|
+// PID	| STATE	|	BP	|	SP	|	IP	| PTBR	| PTLR	|  R0 - R7	| File Tbl.	+ F |
+//------+-------+-------+-------+-------+-------+-------+-----------+-----------+---|
+
+//print "OS-Over";
+//breakpoint;
+ireturn;

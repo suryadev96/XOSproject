@@ -1,0 +1,236 @@
+// print "In Exception";
+// halt;
+breakpoint;
+alias Cause S0;
+Cause = EFR % 10;				// Gets value of cause field (size 1 char)
+
+alias VPagenum S1;
+VPagenum = (EFR / 10) % 100;    // Gets value of BadVAddr 
+
+alias Ip_addr S2;
+Ip_addr = (EFR/1000);			// Gets value of IP at the point of exception
+
+
+alias physicalSP S3;			
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias currentPID S4;
+currentPID = (PTBR - 1024) / 8;
+// print currentPID;
+alias currentPTBR S5;
+currentPTBR = PAGE_TABLE + currentPID * 8;
+
+alias i S6;
+
+// print "Cause";
+// print Cause;
+// print "VPagenum";
+// print VPagenum;
+// print "Ip_addr";
+// print Ip_addr;
+
+if(Cause==0) then
+	i = 25;
+	while(i<64) do
+		if([ MEM_LIST + i]==0) then
+			[ MEM_LIST + i]=[ MEM_LIST + i] + 1;
+			break;
+		endif;
+		i = i + 1;
+	endwhile;
+	if(i==64) then
+		// print "No MPage Found";
+		alias procPTBR S7;
+		alias page S8;
+		alias block S10;
+		alias j S11;
+		j = -1;
+		procPTBR = PAGE_TABLE-8;
+		while(j<32) do
+			j = j + 1;
+			procPTBR = procPTBR + 8;
+			if(j==currentPID || [READY_LIST + 32*j]==0) then
+				continue;
+			endif;
+			page = procPTBR;
+			while(page<procPTBR + 6) do
+				if([page+1]=="01") then
+					block = 448;
+					while(block<512) do
+						if([DISK_LIST+block]==0) then
+							i = [page];
+							store([page],block);
+							[DISK_LIST+block] = 1;
+							[page] = block;
+							[page+1] = "00";
+							j = 32;
+							break;
+						endif;
+						block = block + 1;
+					endwhile;
+					if(block==512) then
+						j = 32;
+						Cause = 1;
+					endif;
+					break;
+				endif;
+				if([page+1]=="10"&&[MEM_LIST+[page]]==1) then
+					[page+1]="00";
+				endif;
+				if([page+1]=="11"&&[MEM_LIST+[page]]==1) then
+					[page+1]="01";
+					continue;
+				endif;
+				page = page + 2;
+			endwhile;
+		endwhile;
+	endif;
+endif;
+
+
+
+if(Cause!=0 || [currentPTBR + 2 * VPagenum]==-1) then
+	// print "Closing";
+	// print currentPID;
+	alias newPID S7;
+	alias currentPCB S8;
+	currentPCB = READY_LIST + 32 * currentPID;
+	newPID = -1;
+	i = READY_LIST + 1;
+	[ currentPCB + 1 ] = 0; 	// Set STATE to OVER
+	// breakpoint;
+	while (i < READY_LIST + 1024) do
+		// print "Checking ";	
+		// print newPID;
+		if ([i]==(currentPID+100)) then
+			[i] = 1;
+		endif;
+		if (newPID == -1 && [i] == 1) then
+			newPID = (i - READY_LIST - 1) / 32;
+		endif;
+		i = i+32;
+	endwhile;
+	
+	// print "newPID";
+	// print newPID;
+	
+	if(newPID==-1) then
+		halt;
+	endif;
+	
+	
+	alias newPCB S9;
+	newPCB = READY_LIST + 32 * newPID;
+	
+	// Get the Start of Per Process Table
+	alias PPFTStart S10;
+	alias fileDescriptor S11;
+	alias SWOTindex S12;
+	
+	PPFTStart = currentPCB + 15;
+	fileDescriptor = PPFTStart;
+	PPFTStart = PPFTStart + 16;
+	
+	while(fileDescriptor<PPFTStart) do
+		// print "fileDescript";
+		// print fileDescriptor;
+		// Check if the Entry there is Valid
+		if([fileDescriptor] == -1) then
+			// print "Invalid SWOT";
+			fileDescriptor = fileDescriptor + 2;
+			continue;
+		endif;
+		
+		// Get the SWOTindex 
+		SWOTindex = FILE_TABLE + 2*[fileDescriptor] + 1;
+		// Check this wierd stuff ^
+		
+		// Decrement File Open Count
+		[SWOTindex] = [SWOTindex] - 1;
+		
+		// Check if it Zero
+		if([SWOTindex]==0) then
+			[SWOTindex-1] = -1;
+		endif;
+		
+		// Remove the Entry from PPFT
+		[fileDescriptor] = -1;
+		[fileDescriptor + 1] = -1;
+		fileDescriptor = fileDescriptor + 2;
+		// print "Got Here";
+	endwhile;
+	
+	i = currentPTBR;
+	while(i<6) do
+		// print "page";
+		// print i;
+		if([i]!=-1) then
+			if([i + 1]=="11" || [i + 1]=="01") then
+				[MEM_LIST + [i]] = [MEM_LIST + [i]] - 1;
+			else
+				if([i]>=448) then
+					[DISK_LIST + [i]] = [DISK_LIST + [i]] - 1;
+				endif;
+			endif;
+			[i] = -1;
+			[i + 1] = "00";
+		endif;
+		i = i + 2;
+	endwhile;
+	
+	breakpoint;
+	store(6,20);
+	
+	[ newPCB + 1 ] = 2; 	// Set STATE to READY
+	BP = [ newPCB + 2 ];	//
+	SP = [ newPCB + 3 ]; 	//
+	PTBR = [ newPCB + 5 ];	//
+	PTLR = [ newPCB + 6 ];	//
+	R0 = [ newPCB + 7 ];	//
+	R1 = [ newPCB + 8 ];	// Copy Back the values
+	R2 = [ newPCB + 9 ];	//
+	R3 = [ newPCB + 10 ]; 	//
+	R4 = [ newPCB + 11 ]; 	//
+	R5 = [ newPCB + 12 ]; 	//
+	R6 = [ newPCB + 13 ]; 	//
+	R7 = [ newPCB + 14 ];	//
+	SP = SP + 1; 			// Make space for storing the IP on top as after interrupt 
+							// it is loaded from there
+	alias newphysicalSP S13; 
+	newphysicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512); 
+	[ newphysicalSP ] = [ newPCB + 4 ]; 
+	[physicalSP - 2] = 0;
+	breakpoint;
+	// print "OutException";
+	ireturn;
+endif;
+
+breakpoint;
+
+// print "Page Found";
+// print i;
+alias diskBlock S14;
+diskBlock = [currentPTBR + 2 * VPagenum];
+// print "diskBlock";
+// print diskBlock;
+
+// print("HI1");
+breakpoint;
+store(6,20);
+
+
+load(i,diskBlock);
+if(diskBlock>=448 && diskBlock<=511) then
+	// print "diskBlock2";
+	// print diskBlock;
+	[DISK_LIST + diskBlock] = [DISK_LIST + diskBlock] - 1;
+endif;
+
+[currentPTBR + 2 * VPagenum] = i;
+[currentPTBR + 2 * VPagenum + 1] = "11";
+
+SP = SP + 1;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+[physicalSP] = Ip_addr;
+
+// print "OutException";
+ireturn;

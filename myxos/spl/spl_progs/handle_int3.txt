@@ -1,0 +1,161 @@
+// print "In INT 3";
+alias physicalSP S0;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias sysCallNo S1;
+sysCallNo = [physicalSP - 1];
+breakpoint;
+// print "sysCallNo=";
+// print sysCallNo;
+
+if (sysCallNo == 6) then
+	// Implementation of SEEK
+	
+	// Get the File Descriptor
+	alias fileDescriptor S2;
+	fileDescriptor = [physicalSP - 4];
+//	//*print "fileDescriptor=";
+//	//*print fileDescriptor;
+	
+	// Check if the File Descriptor is Valid
+	if(fileDescriptor<0 || fileDescriptor>7) then
+	//	//*print "Invalid FD";
+		[physicalSP - 2] = -1;
+		// print "Out INT 3";
+		ireturn;
+	endif;
+	
+	// Get the current PID
+	alias currentPID S3;
+	currentPID = (PTBR - 1024) / 8;
+	
+	// Get the Start of Per Process Table
+	alias PPFTStart S4;
+	PPFTStart = READY_LIST + 32 * currentPID + 15;
+	
+	// Check if the Entry there is Valid
+	if([PPFTStart+2*fileDescriptor] == -1) then
+	//	//*print "Invalid SWOT";
+		[physicalSP - 2] = -1;
+		// print "Out INT 3";
+		ireturn;
+	endif;
+	
+	// Get the SWOTindex 
+	alias SWOTindex S5;
+	SWOTindex = [PPFTStart+2*fileDescriptor];
+	
+	// Get the LSEEK 
+	alias newLSeek S6;
+	newLSeek = [physicalSP - 3];
+	
+	// Get the Fat Index 
+	alias fatIndex S7;
+	fatIndex = [FILE_TABLE + 2 * SWOTindex];
+	
+//	//*print "fatIndex=";
+//	//*print fatIndex;
+	
+	alias size S8;
+	size = [FAT + 8 * fatIndex + 1];
+	
+	if (newLSeek < 0 || newLSeek >= size) then	
+		[physicalSP - 2] = -1;
+	//	//*print "No FreeSpace";
+		// print "Out INT 3";
+		ireturn;
+	endif;
+	
+	[PPFTStart+2*fileDescriptor+1] = newLSeek;
+	
+	[physicalSP - 2] = 0;
+	// print "Out INT 3";
+	ireturn;
+	
+endif;
+if (sysCallNo == 7) then
+	// Implementation of Read
+	
+	// Get the File Descriptor
+	alias fileDescriptor S2;
+	fileDescriptor = [physicalSP - 4];
+//	//*print "fileDescriptor=";
+//	//*print fileDescriptor;
+	
+	// Check if the File Descriptor is Valid
+	if(fileDescriptor<0 || fileDescriptor>7) then
+	//	//*print "Invalid FD";
+		[physicalSP - 2] = -1;
+		// print "Out INT 3";
+		ireturn;
+	endif;
+	
+	// Get the current PID
+	alias currentPID S3;
+	currentPID = (PTBR - 1024) / 8;
+	
+	// Get the Start of Per Process Table
+	alias PPFTStart S4;
+	PPFTStart = READY_LIST + 32 * currentPID + 15;
+	
+	// Check if the Entry there is Valid
+	if([PPFTStart+2*fileDescriptor] == -1) then
+	//	//*print "Invalid SWOT";
+		[physicalSP - 2] = -1;
+		// print "Out INT 3";
+		ireturn;
+	endif;
+	breakpoint;
+	// Get the SWOTindex 
+	alias SWOTindex S5;
+	SWOTindex = [PPFTStart+2*fileDescriptor];
+	
+//	//*print "SWOTI:";
+//	//*print SWOTindex;
+	
+	// Get the LSEEK 
+	alias lSeek S6;
+	lSeek = [PPFTStart+2*fileDescriptor+1];
+	
+	// Get the Fat Index 
+	alias fatIndex S7;
+	fatIndex = [FILE_TABLE + 2 * SWOTindex];
+	
+//	//*print "fatIndex=";
+//	//*print fatIndex;
+	
+	alias size S10;
+	size = [FAT + 8 * fatIndex + 1];
+	
+	if(size == lSeek) then
+	//	//*print "File Complete";
+		[physicalSP - 2] = -1;
+		// print "Out INT 3";
+		ireturn;
+	endif;
+	
+	alias basicBlock S8;
+	basicBlock = [FAT + 8 * fatIndex + 2];
+	
+//	//*print "BasicBlock=";
+//	//*print basicBlock;
+	
+	load(1, basicBlock);
+	
+	alias dataBlock S9;
+	dataBlock = [512 + lSeek/512];
+	
+	load(1, dataBlock);
+	
+	[physicalSP - 3] = [512 + lSeek%512];
+	
+	[PPFTStart+2*fileDescriptor+1] = lSeek + 1;
+	
+	[physicalSP - 2] = 0;
+	// print "Out INT 3";
+	ireturn;
+	
+endif;
+[physicalSP - 2] = -1;
+//*print "InvalidSYSCall";
+// print "Out INT 3";
+ireturn;
